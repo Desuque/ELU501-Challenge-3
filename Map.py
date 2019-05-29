@@ -28,10 +28,6 @@ class Map(object):
         self.zombies = zombies
         self.number_image = 0
 
-    def setInitialPoint(self, coordinates):
-        self.initX = coordinates[0]
-        self.initY = coordinates[1]
-
     def getTotalTodayPopulation(self, neighbors):
         total_population = 0
         for neighbor in neighbors:
@@ -106,7 +102,7 @@ class Map(object):
         return False
 
     def zombiesInBrest(self):
-        cell = self.map[131][276]
+        cell = self.map[81][41]
         if self.getZombiesToday(cell):
             print("Zombies arrived to Brest in the day number: ", self.actualJour)
 
@@ -193,6 +189,7 @@ class Map(object):
                         cell.zombies = self.getZombiesToday(cell)
                 np.save("matrix" + str(self.actualJour) + "days.npy", self.map)
 
+            print("Day done: ", self.actualJour)
             self.actualJour += 1
             self.zombiesInBrest()
 
