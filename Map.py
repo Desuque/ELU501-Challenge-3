@@ -11,6 +11,7 @@ class Zombie(object):
     def __init__(self, cell=None):
         self.zombieDays = 0
         self.cell = cell
+        self.arrived = False
 
 
 class Map(object):
@@ -36,10 +37,10 @@ class Map(object):
     def moveZombies(self, cellOrigin, cellDest, numberToMove):
         zombiesPassed = 0
         for zombie in self.zombies:
-            if zombie.cell == cellOrigin and zombiesPassed < numberToMove:
-                print("Se mueven los zombies")
+            if zombie.cell == cellOrigin and zombiesPassed < numberToMove and not zombie.arrived:
                 zombie.cell = cellDest
                 zombiesPassed += 1
+                zombie.arrived = True
 
     def updateZombieDays(self):
         for zombie in self.zombies:
@@ -48,21 +49,27 @@ class Map(object):
             if zombie.zombieDays > 15 and zombie.cell is not None:
                 zombie.cell = None  # The zombie is <<death>>... again!
 
-    def desactivateZombies(self, numberOfZombies):
+    def desactivateZombies(self, numberOfZombies, cell):
         i = 0
         for zombie in self.zombies:
-            zombie.cell = None  # The zombie is <<death>>... again!
-            i += 1
-            if i > numberOfZombies:
-                break
+            if zombie.cell == cell:
+                zombie.cell = None  # The zombie is <<death>>... again!
+                i += 1
+                if i > numberOfZombies:
+                    break
 
     def getZombiesToday(self, cell):
         totalZombies = 0
         for zombie in self.zombies:
             if zombie.cell == cell:
-                totalZombies +=1
+                totalZombies += 1
 
         return totalZombies
+
+    def updateZombieArrived(self):
+        for zombie in self.zombies:
+            if zombie.cell is not None:
+                zombie.arrived = False
 
     def startApocalypse(self, endJour):
         while self.actualJour < endJour:
@@ -70,25 +77,19 @@ class Map(object):
                 for y in range(len(self.map[x])):
                     cell = self.map[x][y]
 
-                    print("Coordenada (x,y): ", x, ",", y)
-                    print("Poblacion: ", cell.population_today)
-                    print("Zombies:", self.getZombiesToday(cell))
-                    print("")
-
                     # Obtengo todos los vecinos de una celda dada
                     neighbors = self.neighbors(x, y)
 
                     for neighbor in neighbors:
                         Hj = neighbor.population_today
-                        Zj = self.getZombiesToday(neighbor)
+                        Zj = self.getZombiesToday(cell)
 
                         if neighbor is not cell and Hj > 0:
-                            print("CASO 1")
                             # The formula for λd is as follows: λd is zero for a slope higher
                             # than 10 degrees, it is one for a slope of zero, and linear
                             # between these two values for slopes between 0 and 10 degrees.
 
-                            elevationDiff = abs(cell.elevation - neighbor.elevation)
+                            elevationDiff = int(abs(cell.elevation - neighbor.elevation))
                             if elevationDiff > 10:
                                 lambdaFactor = 0
                             if elevationDiff == 0:
@@ -96,46 +97,46 @@ class Map(object):
                             if 0 < lambdaFactor <= 10:
                                 lambdaFactor == elevationDiff / 10
 
-                            neighbor.zombies_tomorrow += (Hj / self.getTotalTodayPopulation(neighbors)) * Zj * lambdaFactor
-                            self.moveZombies(cell, neighbor)
+                            neighbor.zombies_tomorrow += int(abs((Hj / self.getTotalTodayPopulation(neighbors)) * Zj * lambdaFactor))
+                            self.moveZombies(cell, neighbor, Zj)
 
                         if neighbor is not cell and Hj == 0:
-                            print("CASO 2")
                             neighbor.zombies_tomorrow += 0
 
                         if neighbor is cell and self.getTotalTodayPopulation(neighbors) > 0:
-                            print("CASO 3")
                             neighbor.zombies_tomorrow += 0
 
                         if neighbor is cell and self.getTotalTodayPopulation(neighbors) == 0:
-                            print("CASO 4")
-                            neighbor.zombies_tomorrow += Zj
-                            print("Cantidad a mover:", Zj)
+                            neighbor.zombies_tomorrow += self.getZombiesToday(cell)
                             self.moveZombies(cell, neighbor, Zj)
 
-                    # The day is end, update zombies with zombies of tomorrow and set
-                    # them to zero
-                    for neighbor in neighbors:
-                        neighbor.zombies_today = neighbor.zombies_tomorrow
-                        neighbor.zombies_tomorrow = 0
+            # The day is end, update zombies with zombies of tomorrow and set
+            # them to zero
+            for neighbor in neighbors:
+                neighbor.zombies_today = neighbor.zombies_tomorrow
+                neighbor.zombies_tomorrow = 0
 
-                    # The day is over, so, I need update the zombie days to <<kill>> some deaths
-                    self.updateZombieDays()
+            # The day is over, so, I need update the zombie days to <<kill>> some deaths
+            self.updateZombieDays()
+
+            # Update all zombie status
+            self.updateZombieArrived()
 
             # Step 2
             for x in range(len(self.map)):
                 for y in range(len(self.map[x])):
                     cell = self.map[x][y]
-                    print("A ver que tiene la celda; ", cell)
                     humansAlive = cell.population_today
-                    humansDies = cell.population_today - self.getZombiesToday(cell) * 10
+                    humansDies = 0
+                    if self.getZombiesToday(cell) > 0:
+                        humansDies = int(abs(cell.population_today - self.getZombiesToday(cell) * 10))
 
-                    if humansDies >= cell.population_today:
-                        cell.population_today = 0
+                    if humansDies > humansAlive:
                         # Create new zombies with the deaths
                         self.zombies.extend([Zombie(cell) for _ in range(humansAlive)])
-                    else:
-                        cell.population_today = humansDies
+                        cell.population_today = 0
+                    elif humansAlive > humansDies >= 0:
+                        cell.population_today = humansAlive - humansDies
                         # Create new zombies with the deaths
                         self.zombies.extend([Zombie(cell) for _ in range(humansDies)])
 
@@ -144,16 +145,27 @@ class Map(object):
                 for y in range(len(self.map[x])):
                     cell = self.map[x][y]
                     zombiesAlive = self.getZombiesToday(cell)
-                    zombiesDie = self.getZombiesToday(cell) - cell.population_today * 10
+                    zombiesDie = 0
+                    if cell.population_today > 0:
+                        zombiesDie = self.getZombiesToday(cell) - cell.population_today * 10
 
-                    if zombiesDie >= self.getZombiesToday(cell):
-                        self.desactivateZombies(zombiesAlive)
-                    else:
-                        self.desactivateZombies(zombiesDie)
+                    if zombiesDie > self.getZombiesToday(cell):
+                        self.desactivateZombies(zombiesAlive, cell)
+                    elif zombiesAlive > zombiesDie > 0:
+                        self.desactivateZombies(zombiesDie, cell)
 
             self.actualJour += 1
 
+        # Test final del dia
+        for x in range(len(self.map)):
+            for y in range(len(self.map[x])):
+                cell = self.map[x][y]
+                zombiesAlive = self.getZombiesToday(cell)
+                print("En la celda: ", x, y, " hay ", zombiesAlive, " zombies y ", cell.population_today, "humanos vivos")
+
     def neighbors(self, row, col, radius=1):
+        row = row + 1
+        col = col + 1
         rows, cols = len(self.map), len(self.map[0])
         neighbors = []
 
