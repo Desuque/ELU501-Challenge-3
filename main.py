@@ -1,6 +1,8 @@
 from PIL import Image
 import numpy as np
 from scipy.spatial import distance
+import matplotlib.pyplot as plt
+from Map import *
 
 from matplotlib import pyplot as plt
 import struct
@@ -17,56 +19,89 @@ def main():
 
     densityMatrix = popDensityScaling(population_density,maxDensity)
 
+    #densityMatrix = densityMatrix[0:1000, 0:1000]
+
+    print("density matrix shape : ", np.shape(densityMatrix))
+
+    #plt.imshow(densityMatrix,cmap='gray')
+    #plt.show()
+
     # Processing of the elevation image
 
     elevation = "/homes/g18quint/PycharmProjects/ELU501-Challenge-3/elevation1x1_new-mer-bleue.bmp"
+
+
 
     maxElevation = 4810 #elevation of the Mont Blanc
 
     pixelMaxElevation = searchMaxAltitude(elevation)
 
-    elevationMatrix = elevationScaling(elevation,maxElevation,pixelMaxElevation)
+    elevationRotated = "/homes/g18quint/PycharmProjects/ELU501-Challenge-3/elevation1x1_new-mer-bleue.bmp"
 
+    elevationMatrix = elevationScaling(elevationRotated,maxElevation,pixelMaxElevation)
 
-def __init__(self, pixels, pixels_elevation, row, col):
-    self.pixels=pixels
-    self.tmp=[]
-    for i in range(15):
-        for j in range(15):
-            self.tmp.append((self.pixels[i][j][0],self.pixels[i][j][1],self.pixels[i][j][2]))
-    self.pop_dens=math.floor(sum([map_color_density2[p] for p in self.tmp]))
-    self.tmp2=[]
-    self.zombies=[]
-    #for i in range(15):
-    #    for j in range(15):
-    #        self.tmp2.append((pixels_elevation[i][j][0],pixels_elevation[i][j][1],pixels_elevation[i][j][2]))
-    #self.elevation=np.mean([map_color_altitude[closest_color(p,sortedColors)] for p in self.tmp2])
-    self.id=Cell.id
-    self.row = self.id//234
-    self.col = self.id-234*(self.id//234)
-    Cell.id+=1
-    #Cell.cells[self.row][self.col]=self
-    Cell.tempcells.append(self)
+    im = elevationMatrix
+    plt.imshow(im,cmap='gray')
+    plt.show()
+
+    print("elev matrix shape : ", np.shape(elevationMatrix))
+
+    deltX = 1000
+    deltaY = 0
+    elevationMatrixCut = elevationMatrix[deltX:(deltX+3510),deltaY:(deltaY+4251)]
+
+    plt.imshow(elevationMatrixCut,cmap='gray')
+    plt.show()
+    print("elev matrix shape : ", np.shape(elevationMatrixCut))
+
+    #Graph creation
+
+    picture,graph = createGraph(densityMatrix,elevationMatrixCut,15,2)
+
+    print("shape graphe ",np.shape(picture[:,:,0]))
+
+    im = picture[:,:,0]
+    plt.imshow(im,cmap='gray')
+    plt.show()
+
+    im = picture[:,:,1]
+    plt.imshow(im,cmap='gray')
+    plt.show()
+
+    #we save the graph in a numpy file
+    np.save("graph.npy",graph)
+
+    #we load the graph
+    loadedGraph = np.load("graph.npy",allow_pickle=True)
+    print("node ",loadedGraph[100,100])
+    print("node population ", loadedGraph[100, 100].population_today)
+    print("node elevation : ", loadedGraph[100, 100].elevation)
 
 def createGraph(imgPop,imgElev,numberOfPixels,charac):
 
-    heightOriginal,widhtOriginal = np.shape(imgPop) #the images need to have the same shape
-    height = np.floor(heightOriginal/numberOfPixels)
-    widht = np.floor(widhtOriginal / numberOfPixels)
+    heightOriginal1,widthOriginal1 = np.shape(imgPop)
+    heightOriginal2, widthOriginal2 = np.shape(imgElev)
+    heightOriginal = min(heightOriginal1,heightOriginal2)
+    widthOriginal = min(widthOriginal1,widthOriginal2)
+    height = int(np.floor(heightOriginal/numberOfPixels))
+    width = int(np.floor(widthOriginal / numberOfPixels))
 
-    graph = np.zeros((height,widht,charac))
-
-    counter = 0
-    i=0
-    j=0
-    for line in range(widhtOriginal):
-        for column in range(heightOriginal):
-            acumulatedPop + = imgPop[line,column]
-            acumulatedElev + = imgElev[line, column]
-            counter + = 1
-            if counter == numberOfPixels:
-                graph[i,j,0] = acumulatedPop / (numberOfPixels**2)
-                graph[i, j,1] = acumulatedElev / (numberOfPixels ** 2)
+    graph = np.zeros([height,width,charac])
+    #graphMatrix = np.zeros([height,width,charac])
+    graphMatrix = np.full((height, width), Cell(0,0))
+    for i in range(height):
+        for j in range(width):
+            line = i*(numberOfPixels+1)
+            column = j * (numberOfPixels+1)
+            graph[i, j, 0] = np.sum(imgPop[line:(line+numberOfPixels), column:(column+numberOfPixels)]) / (numberOfPixels ** 2)
+            graph[i, j, 1] = np.sum(imgElev[line:(line + numberOfPixels), column:(column + numberOfPixels)]) / (numberOfPixels ** 2)
+            graphMatrix[i,j] = Cell(graph[i, j, 1],graph[i, j, 0])
+            """
+            if i<5 and j<5:
+                print("matriz original" ,imgPop[i:(i+numberOfPixels), j:(j+numberOfPixels)])
+                print("grafo " ,graph[i, j, 0])
+            """
+    return graph,graphMatrix
 
 
 
@@ -114,7 +149,7 @@ def elevationScalingLouis(path):
 
     RGBsorted=list(colours)
     RGBsorted.sort()
-    print(RGBsorted)
+    #print(RGBsorted)
 
     #Luigi
 
@@ -186,6 +221,8 @@ def elevationScalingLouis(path):
 def searchMaxAltitude(path):
 
     im = Image.open(path)
+
+    print(im.size)
 
     width = im.size[0]
     heigth = im.size[1]
@@ -262,7 +299,7 @@ def elevationScaling(path,maxAltitude,maxColour):
 
     RGBsorted=list(colours)
     RGBsorted.sort()
-    print(RGBsorted)
+    #print(RGBsorted)
 
     #Luigi
 
@@ -295,7 +332,7 @@ def elevationScaling(path,maxAltitude,maxColour):
         return path, cost
 
     path, _ = NN(A, 0)
-    print(path)
+    #print(path)
     # Final array
     colours_nn = []
     for i in path:
@@ -321,14 +358,30 @@ def elevationScaling(path,maxAltitude,maxColour):
     displNN = Image.new("RGB", (len(sortedColors), 1))
     displNN.putdata(sortedColors)
     displNN = displNN.resize((8 * L, 500))
-    displNN.show() #BEST RESULT
+    #displNN.show() #BEST RESULT
     altitudes = [(i * maxAltitude) / (L - 1) for i in range(0, L)]
     map_color_altitude = dict(zip(sortedColors, altitudes))
     print('map color altitude: ',map_color_altitude)
     print('map color altitude shape: ',np.shape(map_color_altitude))
     map_color_altitude[(0, 0, 0)] = 0
+    print("altitudes", altitudes)
 
-    return map_color_altitude
+    print("width ", im.size[0])
+    print("height ", im.size[1])
+
+
+    rgb_im = im.convert('RGB')
+    #rgb_im = rgb_im.rotate(90)
+    rgb_im = rgb_im.transpose(Image.FLIP_LEFT_RIGHT)
+    rgb_im = rgb_im.rotate(90)
+
+    elevMap = np.zeros([width,heigth])
+    for i in range(width-1):
+        for j in range(heigth-1):
+            r, g, b = rgb_im.getpixel((i, j))
+            elevMap[i,j] = map_color_altitude.get((r,g,b))
+
+    return elevMap
 
     def closest_color(color, colors):
         colors = np.asarray(colors)
