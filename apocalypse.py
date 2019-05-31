@@ -1,20 +1,26 @@
 from Map import *
 import numpy as np
+import networkx as nx
 
 
 def main():
-    matrix = np.load("graph.npy", allow_pickle=True)
+    graph = nx.read_gpickle("initialGraphBis.gpickle")
+    rize = None
 
-    cellZombie = matrix[131][276]  # Rize point
-    zombies = []
+    for cell in graph:
+        if cell.rize:
+            rize = cell
 
+    zombies = {}
     # All the city turns into zombies
-    for i in range(0, int(cellZombie.population_today)):
-        zombies.append(Zombie(cellZombie))
-        cellZombie.population_today = 0
+    totalPopulation = int(rize.population_today)
+    for i in range(0, totalPopulation):
+        zombies.update({Zombie(): rize})
+    rize.population_today = 0
+    rize.zombies = totalPopulation
 
-    map = Map(matrix, zombies)
-    map.startApocalypse(130)
+    map = Map(graph, zombies)
+    map.startApocalypse(1)
 
 
 if __name__ == '__main__':
