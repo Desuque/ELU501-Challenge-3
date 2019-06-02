@@ -3,6 +3,14 @@
 import cv2
 import numpy as np
 
+"""
+# This function is used to calculate the Homography using the library CV2
+# The common points of both images are hardcoded
+# and we set the final day of the event
+#  input : - (Because the input images are hardcoded too)
+#  output: out.png: Image
+"""
+
 if __name__ == '__main__':
     # Read source image.
     im_src = cv2.imread('elevation1x1_new-mer-bleue.bmp')
@@ -27,5 +35,5 @@ if __name__ == '__main__':
     cv2.imshow("Source Image", im_src)
     cv2.imshow("Destination Image", im_dst)
     cv2.imshow("Warped Source Image", im_out)
-    cv2.imwrite("out2.png", im_out)
+    cv2.imwrite("out.png", im_out)
     cv2.waitKey(0)

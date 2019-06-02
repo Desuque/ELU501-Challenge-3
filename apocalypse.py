@@ -2,6 +2,13 @@ from Map import *
 import numpy as np
 import networkx as nx
 
+"""
+# This main is the start of the Apocalypse. Here we create the first zombie population
+# and we set the final day of the event
+#  input : -
+#  output: -
+"""
+
 
 def main():
     graph = nx.read_gpickle("initialGraphBis.gpickle")
@@ -20,7 +27,7 @@ def main():
     rize.zombies = totalPopulation
 
     map = Map(graph, zombies)
-    map.startApocalypse(1)
+    map.startApocalypse(100)
 
 
 if __name__ == '__main__':
